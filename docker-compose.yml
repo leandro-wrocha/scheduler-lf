@@ -1,0 +1,13 @@
+services:
+  db:
+    container_name: scheduler-db
+    image: mysql:lts
+    ports:
+      - 3306:3306
+    volumes:
+      - db-data:/var/lib/mysql
+    env_file:
+      - .env.local
+
+volumes:
+  db-data:
