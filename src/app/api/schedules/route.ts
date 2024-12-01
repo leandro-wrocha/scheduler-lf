@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "../prisma";
-import { parse } from "date-fns";
+import { endOfDay, format, parse, startOfDay } from "date-fns";
 
 export const GET = async (request: NextRequest) => {
   const authorization = request.headers.get('Authorization');
   const date = request.nextUrl.searchParams.get('date');
-
+  
+  const today = format(new Date(), 'yyyy-MM-dd');
+  
   const from = request.nextUrl.searchParams.get('from');
   const to = request.nextUrl.searchParams.get('to');
 
@@ -18,7 +20,11 @@ export const GET = async (request: NextRequest) => {
   try {
     const schedules = await prisma.schedule.findMany({
       where: {
-        userId: token
+        userId: token,
+        startTime: {
+          gte: startOfDay(parse(from || date || today, 'yyyy-MM-dd', new Date())),
+          lte: endOfDay(parse(to || date || today, 'yyyy-MM-dd', new Date()))
+        }
       },
       include: {
         External: {
