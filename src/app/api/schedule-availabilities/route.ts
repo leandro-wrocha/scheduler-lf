@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "../prisma";
+import { differenceInMinutes, eachMinuteOfInterval, endOfDay, format, isEqual, parse, startOfDay } from "date-fns";
+
+const days = ['sun', 'mon', 'tue', 'wed', 'thur', 'fri', 'sat'];
 
 export const GET = async (request: NextRequest) => {
   const authorization = request.headers.get('Authorization');
+  const date = request.nextUrl.searchParams.get('date') || format(new Date(), 'yyyy-MM-dd');
 
   if (!authorization) return NextResponse.json({ msg: 'unauthorized' }, { status: 401 });
 
@@ -11,13 +15,44 @@ export const GET = async (request: NextRequest) => {
   if (!token) return NextResponse.json({ msg: 'unauthorized' }, { status: 401 });
 
   try {
-    const schedulesAvailabilities = await prisma.scheduleAvailability.findMany({
+    const schedules = await prisma.schedule.findMany({
       where: {
-        userId: token
+        userId: token,
+        startTime: {
+          gte: startOfDay(parse(date, 'yyyy-MM-dd', new Date())),
+          lte: endOfDay(parse(date, 'yyyy-MM-dd', new Date()))
+        }
       }
     });
 
-    return NextResponse.json({ schedulesAvailabilities }, { status: 200 });
+    const schedulesAvailabilities = await prisma.scheduleAvailability.findMany({
+      where: {
+        userId: token,
+        day: days[parse(date, 'yyyy-MM-dd', new Date()).getDay()]
+      }
+    });
+
+    let hoursAvailables: any[] = [];
+
+    schedulesAvailabilities.forEach(schedulesAvailabilities => {
+      const startTime = parse(schedulesAvailabilities.startTime, 'HH:mm', parse(date, 'yyyy-MM-dd', new Date()));
+      const endTime = parse(schedulesAvailabilities.endTime, 'HH:mm', parse(date, 'yyyy-MM-dd', new Date()));
+  
+      const difference = differenceInMinutes(endTime, startTime);
+      const minutesByVacancies = difference / schedulesAvailabilities.vacancies;
+      
+      hoursAvailables = hoursAvailables.concat(
+        eachMinuteOfInterval({
+          start: startTime,
+          end: endTime,
+        }, { step: minutesByVacancies })
+      )
+    });
+
+    hoursAvailables = hoursAvailables.filter(hour => !schedules.find(schedule => isEqual(schedule.startTime, hour)));
+    hoursAvailables = hoursAvailables.sort((a: Date, b: Date) => a.getTime() - b.getTime());
+
+    return NextResponse.json({ hoursAvailables }, { status: 200 });
   } catch (error) {
     console.log(error);
     return NextResponse.json({ msg: 'internal server error.' }, { status: 500 });
