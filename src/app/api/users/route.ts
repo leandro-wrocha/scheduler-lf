@@ -1,18 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
+
+import { prismaUsersRepository } from "@/database";
+import { CreateUserUseCase } from "@/domain/scheduler/application/use-cases/create-user";
+
 import { prisma } from "../prisma";
-import { hash } from "bcrypt";
-import { z } from 'zod';
-
-
-const schemaUserCreateRequest = z.object({
-  firstName: z.string(),
-  lastName: z.string(),
-  email: z.string().email(),
-  password: z.string(),
-});
-
-type UserCreateRequest = z.infer<typeof schemaUserCreateRequest>;
-
 
 export const GET = async () => {
   const users = await prisma.user.findMany();
@@ -21,27 +12,16 @@ export const GET = async () => {
 }
 
 export const POST = async (request: NextRequest) => {
-  const { firstName, lastName, email, password }: UserCreateRequest = await request.json();
+  const { firstName, lastName, email, password } = await request.json();
+
+  const createUserUseCase = new CreateUserUseCase(prismaUsersRepository);
 
   try {
-    const userExists = await prisma.user.findUnique({
-      where: { email },
-    });
+    await createUserUseCase.execute({ firstName, lastName, email, password });
 
-    if (userExists) return NextResponse.json({ msg: 'user already exists.' }, { status: 400 });
-
-    await prisma.user.create({
-      data: {
-        firstName,
-        lastName,
-        email,
-        password: await hash(password, 12),
-      }
-    });
+    return NextResponse.json({ msg: 'user created.' }, { status: 201 });
   } catch (error) {
     console.log(error);
     return NextResponse.json({ msg: 'internal server error.' }, { status: 500 });
   }
-
-  return NextResponse.json({ msg: 'user created' }, { status: 201 });
 }
