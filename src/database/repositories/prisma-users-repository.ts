@@ -3,18 +3,30 @@ import { User } from "@/domain/scheduler/enterprise/entities/user";
 import { PrismaService } from ".";
 import { UniqueEntityID } from "@/core/entities/unique-entity-id";
 
+interface UserRecord {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  password: string;
+}
+
 export class PrismaUsersRepository implements UsersRepository {
   constructor (private readonly prismaService: PrismaService) {}
+
+  private toDomain(userRecord: UserRecord): User {
+    return User.create({
+      firstName: userRecord.firstName,
+      lastName: userRecord.lastName,
+      email: userRecord.email,
+      password: userRecord.password
+    }, new UniqueEntityID(userRecord.id));
+  }
 
   async findMany(): Promise<User[]> {
     const users = await this.prismaService.client.user.findMany();
 
-    return users.map(user => User.create({
-      firstName: user.firstName,
-      lastName: user.lastName,
-      email: user.email,
-      password: user.password,
-    }, new UniqueEntityID(user.id)));
+    return users.map(user => this.toDomain(user));
   }
 
   async findById(id: string): Promise<User | null> {
@@ -26,12 +38,7 @@ export class PrismaUsersRepository implements UsersRepository {
 
     if (!user) return null;
 
-    return User.create({
-      firstName: user.firstName,
-      lastName: user.lastName,
-      email: user.email,
-      password: user.password
-    }, new UniqueEntityID(user.id));
+    return this.toDomain(user);
   }
 
   async findByEmail(email: string): Promise<User | null> {
@@ -41,12 +48,7 @@ export class PrismaUsersRepository implements UsersRepository {
 
     if (!user) return null;
 
-    return User.create({
-      firstName: user.firstName,
-      lastName: user.lastName,
-      email: user.email,
-      password: user.password
-    }, new UniqueEntityID(user.id));
+    return this.toDomain(user);
   }
 
   async create(user: User): Promise<void> {
