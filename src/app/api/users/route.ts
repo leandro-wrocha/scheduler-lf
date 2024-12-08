@@ -16,12 +16,11 @@ export const POST = async (request: NextRequest) => {
 
   const createUserUseCase = new CreateUserUseCase(prismaUsersRepository);
 
-  try {
-    await createUserUseCase.execute({ firstName, lastName, email, password });
+  const response = await createUserUseCase.execute({ firstName, lastName, email, password });
 
-    return NextResponse.json({ msg: 'user created.' }, { status: 201 });
-  } catch (error) {
-    console.log(error);
-    return NextResponse.json({ msg: 'internal server error.' }, { status: 500 });
+  if (response.isLeft()) {
+    return NextResponse.json({ msg: response.value.message }, { status: 400 });
   }
+
+  return NextResponse.json({}, { status: 201 });
 }

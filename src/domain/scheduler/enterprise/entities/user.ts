@@ -1,12 +1,13 @@
 import { AggregateRoot } from '@/core/entities/aggregate-root';
 import { UniqueEntityID } from '@/core/entities/unique-entity-id';
+import { Password } from './value-objects/password';
 
 export interface UserProps {
   id?: UniqueEntityID;
   firstName: string;
   lastName: string;
   email: string;
-  password: string;
+  password: Password;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -28,7 +29,7 @@ export class User extends AggregateRoot<UserProps> {
     return this.props.email;
   }
 
-  get password(): string {
+  get password(): Password {
     return this.props.password;
   }
 
